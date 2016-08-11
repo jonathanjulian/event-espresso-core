@@ -426,7 +426,9 @@ class EES_Espresso_Thank_You extends EES_Shortcode {
 		do_action( 'AHEE__EES_Espresso_Thank_You__init_end', $this->_current_txn );
 		// set no cache headers and constants
 		EE_System::do_not_cache();
-	}
+        add_action('shutdown', array($this, 'check_for_sold_out_events'), 10);
+
+    }
 
 
 
@@ -970,6 +972,96 @@ class EES_Espresso_Thank_You extends EES_Shortcode {
 	}
 
 
+
+    /**
+     * check_for_sold_out_events
+     * after all is said and done on this page,
+     * this method collects the event ids from this transactions registrations,
+     * then queries the database to get info regarding the number of approved registrations
+     * and registration limits for each event's datetimes.
+     * If any datetime appears to be sold out, then a heavily filtered email is sent out.
+     */
+    public function check_for_sold_out_events()
+    {
+        if (defined('DOING_AJAX') && DOING_AJAX) {
+            return;
+        }
+        $events = array();
+        foreach( (array)$this->_current_txn->registrations() as $registration) {
+            if ($registration instanceof \EE_Registration) {
+                $events[] = $registration->event_ID();
+            }
+        }
+        if ( ! empty($events)) {
+            global $wpdb;
+            $events = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT
+                      e.ID AS Event_ID,
+                      e.post_title AS Event_Name,
+                      d.DTT_ID AS Datetime_ID,
+                      d.DTT_name AS Datetime_Name,
+                      d.DTT_reg_limit AS Datetime_Reg_Limit,
+                      count(r.REG_ID) AS Approved_Registrations_Count                  
+                    FROM {$wpdb->posts} AS e                    
+                      JOIN {$wpdb->prefix}esp_registration AS r
+                        ON r.EVT_ID = e.ID
+                           AND r.STS_ID = 'RAP'
+                      JOIN {$wpdb->prefix}esp_ticket AS t
+                        ON t.TKT_ID = r.TKT_ID                        
+                      JOIN {$wpdb->prefix}esp_datetime_ticket AS dt
+                        ON t.TKT_ID = dt.TKT_ID                        
+                      JOIN {$wpdb->prefix}esp_datetime AS d
+                        ON d.DTT_ID = dt.DTT_ID
+                        AND d.DTT_reg_limit != -1                    
+                    WHERE  d.DTT_EVT_end > NOW()
+                      AND e.ID IN (%s)                    
+                    GROUP BY d.DTT_ID
+                    ORDER BY d.DTT_ID ASC",
+                    implode(', ', $events)
+                )
+            );
+            foreach ($events as $event) {
+                if (
+                    isset($event->Datetime_Reg_Limit, $event->Approved_Registrations_Count)
+                    && $event->Datetime_Reg_Limit <= $event->Approved_Registrations_Count
+                ) {
+                    do_action('AHEE__EES_Espresso_Thank_You__check_for_sold_out_events', $event);
+                    if(
+                        apply_filters(
+                            'AFEE__EES_Espresso_Thank_You__check_for_sold_out_events__send_sold_out_event_email',
+                            true
+                        )
+                    ) {
+                        wp_mail(
+                            apply_filters(
+                                'AFEE__EES_Espresso_Thank_You__check_for_sold_out_events__sold_out_event_email_recipient',
+                                EE_Config::instance()->organization->email
+                            ),
+                            apply_filters(
+                                'AFEE__EES_Espresso_Thank_You__check_for_sold_out_events__sold_out_event_email_subject',
+                                __('Sold Out Event', 'event_espresso')
+                            ),
+                            apply_filters(
+                                'AFEE__EES_Espresso_Thank_You__check_for_sold_out_events__sold_out_event_email_message',
+                                sprintf(
+                                    __('The "%1$s" event (ID:%2$d) has %3$d approved registrations which matches the datetime registration limit of %4$d for the "%5$s" datetime (ID:%6$d)',
+                                            'event_espresso'),
+                                    $event->Event_Name,
+                                    $event->Event_ID,
+                                    $event->Approved_Registrations_Count,
+                                    $event->Datetime_Reg_Limit,
+                                    $event->Datetime_Name,
+                                    $event->Datetime_ID
+                                ),
+                                $event
+                            )
+                        );
+                    }
+                }
+            }
+        }
+    }
 
 }
 // End of file EES_Espresso_Thank_You.shortcode.php
