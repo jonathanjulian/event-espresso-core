@@ -174,7 +174,7 @@ class EED_Batch extends EED_Module{
 	 */
 	public function override_template( $template ) {
 		if( isset( $_REQUEST[ 'espresso_batch' ] ) && isset( $_REQUEST[ 'batch' ] ) ) {
-			return EE_MODULES . 'batch' . DS . 'templates' . DS . 'batch_frontend_wrapper.template.html';
+			return EE_MODULES . 'batch' . DS . 'templates' . DS . 'batch_frontend_wrapper.template.php';
 		}
 		return $template;
 	}
