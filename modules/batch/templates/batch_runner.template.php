@@ -1,3 +1,4 @@
+<?php ?>
 <h1><?php _e( 'Doing job...', 'event_espresso' );?></h1>
 <div id="batch-progress" class="progress-responsive"></div>
 <br/>
