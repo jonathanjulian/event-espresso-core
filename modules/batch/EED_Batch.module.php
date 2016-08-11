@@ -199,7 +199,7 @@ class EED_Batch extends EED_Module{
 	 */
 	public function show_admin_page() { 
 		echo EEH_Template::locate_template( 
-			EE_MODULES . 'batch' . DS . 'templates' . DS . 'batch_wrapper.template.html', 
+			EE_MODULES . 'batch' . DS . 'templates' . DS . 'batch_wrapper.template.php', 
 			array( 'batch_request_type' => $this->batch_request_type() )
 		);
 	}
