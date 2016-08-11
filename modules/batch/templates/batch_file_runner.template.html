@@ -1,4 +1,4 @@
-<h1><?php 
+<?php 
 	$job_step_response = EED_Batch::instance()->job_step_response();
 	$filename = null;
 	if( $job_step_response instanceof \EventEspressoBatchRequest\Helpers\JobStepResponse ) {
@@ -7,7 +7,8 @@
 	if( ! $filename) {
 		$filename = __( 'Unknown', 'event_espresso' );
 	}
-	printf( __( 'Generating file %1$s...', 'event_espresso' ), $filename );?></h1>
+?>
+<h1><?php printf( __( 'Generating file %1$s...', 'event_espresso' ), $filename );?></h1>
 <div id="batch-progress" class="progress-responsive"></div>
 <br/>
 <div id='message-area'><?php _e( 'The file will download automatically when done, and then you will be redirected.', 'event_espresso');?></div>
